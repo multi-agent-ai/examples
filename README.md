@@ -1,4 +1,4 @@
-# examples
+# Code Examples
 
 This repository contains example code related to "Multi-Agent AI" publications.
 
