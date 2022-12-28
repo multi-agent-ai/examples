@@ -2,11 +2,16 @@
 // g++ example_02.cpp -o example_02  -std=c++11 -O3
 
 #include <iostream>
+#include <sstream>
+#include <cstdlib>
+#include <chrono>
+#include <thread>
+#include <cmath>
+#include <algorithm>
 #include <random>
 #include <list>
 #include <fstream>
-
-using namespace std;
+#include <time.h>
 
 const double WORLD_WIDTH = 2560.0;
 const double WORLD_HEIGHT = 1440.0;
@@ -28,7 +33,7 @@ public:
         y = WORLD_HEIGHT * (rand() / (RAND_MAX + 1.0));
     }
 
-    void update(const list<Agent*>& food) {
+    void update(const std::vector<Agent*>& food) {
         age++;
 
         // we can't move
@@ -36,6 +41,11 @@ public:
 
         // target is dead, don't chase it further
         if ((target != NULL) && (target->is_alive == false)) {
+            target = NULL;
+        }
+    
+        // periodically loose target
+        if ((target != NULL) && ((double) rand() / (RAND_MAX)) < 0.1) {
             target = NULL;
         }
 
@@ -93,10 +103,10 @@ public:
         y += dy;
 
         // ensure it stays within the world boundaries
-        x = max(x, 0.0);
-        x = min(x, WORLD_WIDTH);
-        y = max(y, 0.0);
-        y = min(y, WORLD_HEIGHT);
+        x = std::max(x, 0.0);
+        x = std::min(x, WORLD_WIDTH);
+        y = std::max(y, 0.0);
+        y = std::min(y, WORLD_HEIGHT);
     }
 };
 
@@ -126,12 +136,10 @@ int main(int argc, char *argv[]) {
     srand (time(NULL));
 
     std::ios_base::sync_with_stdio(false);
-        
-    list<Agent*> predators;
-    list<Agent*> preys;
-    list<Agent*> plants;
 
-    list<Agent*> empty;
+    std::vector<Agent*> predators;
+    std::vector<Agent*> preys;
+    std::vector<Agent*> plants;
 
     // create initial agents
     for (int i = 0; i < 10; i++) {
@@ -151,40 +159,61 @@ int main(int argc, char *argv[]) {
     outfile.open ("output.csv");
 
     int timestep = 0;
-    outfile << timestep << ',' << "Title" << ',' << "Predator Prey Relationship / Example 02 / C++" << endl;
+    outfile << timestep << ',' << "Title" << ',' << "Predator Prey Relationship / Example 02 / C++" << std::endl;
 
     while (timestep < 10000) {
+
         // update all agents
         for (auto p: predators) { p->update(preys); }
         for (auto p: preys) { p->update(plants); }
-        //for (auto p: plants) { p->update(empty); }  // no need to update the plants; they do not move
 
         // handle eaten and create new plants
-        plants.remove_if([](const Agent* a) { return (a->is_alive == false) ? true : false; });
-        for (int i=0; i < 2; i++) { plants.push_back(new Plant()); };
-
-        // handle eaten and create new preys
-        preys.remove_if([](const Agent* a) { return (a->is_alive == false) ? true : false; });
+        plants.erase(
+            std::remove_if(
+                plants.begin(), 
+                plants.end(),
+                [](const Agent* a)
+                {return !a->is_alive;}),
+            plants.end());
         
-        for (auto p: preys) {
-            if (p->energy > 5) {
-                p->energy = 0;
+        for (int i=0; i < 2; i++) { plants.push_back(new Plant()); };
+        
+        // handle eaten and create new preys
+        preys.erase(
+            std::remove_if(
+                preys.begin(), 
+                preys.end(),
+                [](const Agent* a)
+                {return !a->is_alive;}),
+            preys.end());
+        
+        std::vector<Agent*>::size_type preys_size = preys.size();
+        for (std::vector<Agent*>::size_type i = 0; i < preys_size; ++i) {
+            if (preys[i]->energy > 10) {
+                preys[i]->energy = 0;
                 Prey* np = new Prey();
-                np->x = p->x + -20 + 40 * (rand() / (RAND_MAX + 1.0));
-                np->y = p->y + -20 + 40 * (rand() / (RAND_MAX + 1.0));
+                np->x = preys[i]->x + -20 + 40 * (rand() / (RAND_MAX + 1.0));
+                np->y = preys[i]->y + -20 + 40 * (rand() / (RAND_MAX + 1.0));
                 preys.push_back(np);
             }
         }
 
         // handle old and create new predators
-        predators.remove_if([](const Agent* a) { return (a->age > 2000) ? true : false; });
+        predators.erase(
+            std::remove_if(
+                predators.begin(), 
+                predators.end(),
+                [](const Agent* a)
+                {return a->age > 2000;}),
+            predators.end());
 
-        for (auto p: predators) {
-            if (p->energy > 10) {
-                p->energy = 0;
+        std::vector<Agent*>::size_type predators_size = predators.size();
+        for (std::vector<Agent*>::size_type i = 0; i < predators_size; ++i) {
+            if (predators[i]->energy > 10) {
+                predators[i]->energy = 0;
                 Predator* np = new Predator();
-                np->x = p->x + -20 + 40 * (rand() / (RAND_MAX + 1.0));
-                np->y = p->y + -20 + 40 * (rand() / (RAND_MAX + 1.0));
+                np->x = predators[i]->x + -20 + 40 * (rand() / (RAND_MAX + 1.0));
+                np->y = predators[i]->y + -20 + 40 * (rand() / (RAND_MAX + 1.0));
                 predators.push_back(np);
             }
         }
@@ -192,21 +221,20 @@ int main(int argc, char *argv[]) {
         // write data to output file
         /*
         for (const auto p: predators) {
-            outfile << timestep << ',' << "Position" << ',' << "Predator" << ',' << p->x << ',' << p->y << endl;
+            outfile << timestep << ',' << "Position" << ',' << "Predator" << ',' << p->x << ',' << p->y << '\n';
         }
 
         for (const auto p: preys) {
-            outfile << timestep << ',' << "Position" << ',' << "Prey" << ',' << p->x << ',' << p->y << endl;
+            outfile << timestep << ',' << "Position" << ',' << "Prey" << ',' << p->x << ',' << p->y << '\n';
         }
-
+        
         for (const auto p: plants) {
-            outfile << timestep << ',' << "Position" << ',' << "Plant" << ',' << p->x << ',' << p->y << endl;
+            outfile << timestep << ',' << "Position" << ',' << "Plant" << ',' << p->x << ',' << p->y << '\n';
         }
         */
-
         timestep++;
     }
 
     outfile.close();
-    cout << predators.size() << ", " << preys.size() << ", " << plants.size() << endl;
+    std::cout << "ok " << predators.size() << ", " << preys.size() << ", " << plants.size() << std::endl;
 }
