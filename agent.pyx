@@ -43,6 +43,7 @@ cdef class Agent():
         cdef double squared_dist
         cdef double fx
         cdef double fy
+        cdef Agent  a
 
         self.age = self.age + 1
 
@@ -65,7 +66,8 @@ cdef class Agent():
         if not self.target:
             min_dist = 9999999
             min_agent = None
-            for a in food:
+            for aa in food:
+                a = <Agent?>aa
                 if a is not self and a.is_alive:
                     squared_dist = (self.x - a.x) ** 2 + (self.y - a.y) ** 2
                     if squared_dist < min_dist:
