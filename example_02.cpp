@@ -33,7 +33,8 @@ public:
         y = WORLD_HEIGHT * (rand() / (RAND_MAX + 1.0));
     }
 
-    void update(const std::vector<Agent*>& food) {
+    template <typename T>
+    void update(std::vector<T> & food) {
         age++;
 
         // we can't move
@@ -63,12 +64,12 @@ public:
             double min_dist = 9999999;
             Agent* min_agent = NULL;
 
-            for (const auto a: food) {
-                if (a->is_alive == true) {
-                    double squared_dist = pow((x - a->x), 2) + pow((y - a->y), 2);
+            for (auto & a: food) {
+                if (a.is_alive == true) {
+                    double squared_dist = pow((x - a.x), 2) + pow((y - a.y), 2);
                     if (squared_dist < min_dist) {
                         min_dist = squared_dist;
-                        min_agent = a;
+                        min_agent = &a;
                     }
                 }
             }
@@ -137,22 +138,19 @@ int main(int argc, char *argv[]) {
 
     std::ios_base::sync_with_stdio(false);
 
-    std::vector<Agent*> predators;
-    std::vector<Agent*> preys;
-    std::vector<Agent*> plants;
+    std::vector<Predator> predators;
+    std::vector<Prey> preys;
+    std::vector<Plant> plants;
 
     // create initial agents
     for (int i = 0; i < 10; i++) {
-        Predator *p = new Predator();
-        predators.push_back(p);
+        predators.push_back({});
     }
     for (int i = 0; i < 10; i++) {
-        Prey *p = new Prey();
-        preys.push_back(p);
+        preys.push_back({});
     }
     for (int i = 0; i < 100; i++) {
-        Plant *p = new Plant();
-        plants.push_back(p);
+        plants.push_back({});
     }
 
     std::ofstream outfile;
@@ -164,36 +162,36 @@ int main(int argc, char *argv[]) {
     while (timestep < 10000) {
 
         // update all agents
-        for (auto p: predators) { p->update(preys); }
-        for (auto p: preys) { p->update(plants); }
+        for (auto p: predators) { p.update(preys); }
+        for (auto p: preys) { p.update(plants); }
 
         // handle eaten and create new plants
         plants.erase(
             std::remove_if(
                 plants.begin(), 
                 plants.end(),
-                [](const Agent* a)
-                {return !a->is_alive;}),
+                [](const Agent & a)
+                {return !a.is_alive;}),
             plants.end());
         
-        for (int i=0; i < 2; i++) { plants.push_back(new Plant()); };
+        for (int i=0; i < 2; i++) { plants.push_back(Plant()); };
         
         // handle eaten and create new preys
         preys.erase(
             std::remove_if(
                 preys.begin(), 
                 preys.end(),
-                [](const Agent* a)
-                {return !a->is_alive;}),
+                [](const Agent & a)
+                {return !a.is_alive;}),
             preys.end());
         
-        std::vector<Agent*>::size_type preys_size = preys.size();
-        for (std::vector<Agent*>::size_type i = 0; i < preys_size; ++i) {
-            if (preys[i]->energy > 10) {
-                preys[i]->energy = 0;
-                Prey* np = new Prey();
-                np->x = preys[i]->x + -20 + 40 * (rand() / (RAND_MAX + 1.0));
-                np->y = preys[i]->y + -20 + 40 * (rand() / (RAND_MAX + 1.0));
+        std::vector<Agent>::size_type preys_size = preys.size();
+        for (std::vector<Agent>::size_type i = 0; i < preys_size; ++i) {
+            if (preys[i].energy > 10) {
+                preys[i].energy = 0;
+                Prey np = Prey();
+                np.x = preys[i].x + -20 + 40 * (rand() / (RAND_MAX + 1.0));
+                np.y = preys[i].y + -20 + 40 * (rand() / (RAND_MAX + 1.0));
                 preys.push_back(np);
             }
         }
@@ -203,17 +201,17 @@ int main(int argc, char *argv[]) {
             std::remove_if(
                 predators.begin(), 
                 predators.end(),
-                [](const Agent* a)
-                {return a->age > 2000;}),
+                [](const Agent & a)
+                {return a.age > 2000;}),
             predators.end());
 
-        std::vector<Agent*>::size_type predators_size = predators.size();
-        for (std::vector<Agent*>::size_type i = 0; i < predators_size; ++i) {
-            if (predators[i]->energy > 10) {
-                predators[i]->energy = 0;
-                Predator* np = new Predator();
-                np->x = predators[i]->x + -20 + 40 * (rand() / (RAND_MAX + 1.0));
-                np->y = predators[i]->y + -20 + 40 * (rand() / (RAND_MAX + 1.0));
+        std::vector<Agent>::size_type predators_size = predators.size();
+        for (std::vector<Agent>::size_type i = 0; i < predators_size; ++i) {
+            if (predators[i].energy > 10) {
+                predators[i].energy = 0;
+                Predator np = Predator();
+                np.x = predators[i].x + -20 + 40 * (rand() / (RAND_MAX + 1.0));
+                np.y = predators[i].y + -20 + 40 * (rand() / (RAND_MAX + 1.0));
                 predators.push_back(np);
             }
         }
@@ -223,7 +221,6 @@ int main(int argc, char *argv[]) {
         for (const auto p: predators) {
             outfile << timestep << ',' << "Position" << ',' << "Predator" << ',' << p->x << ',' << p->y << '\n';
         }
-
         for (const auto p: preys) {
             outfile << timestep << ',' << "Position" << ',' << "Prey" << ',' << p->x << ',' << p->y << '\n';
         }
