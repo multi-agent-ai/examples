@@ -1,8 +1,6 @@
 """
-Simple Spaceship Simulation
-
+Simple Spaceship Simulation (c) 2023 Multi-Agent AI
 """
-
 import random
 import typing
 import numpy as np
@@ -16,15 +14,7 @@ class Agent():
 
     @staticmethod
     def square_distance(x: np.ndarray) -> np.ndarray:
-        """
-        Calculates the square of the norm of the input vector.
-
-        Args:
-            x: the vector
-
-        Returns:
-            Square of the norm of the input vector
-        """
+        """ Calculates and return the square of the norm of the input vector x. """
         return x.dot(x)
 
     def __init__(self, agent_id: int, agent_type: int, x: float, y: float, z: float):
@@ -53,7 +43,6 @@ class Agent():
             output_file: An open file descriptor which accepts the output of the simulation.
             damage (optional): The amount of damage per hit (multiplied by h)
         """
-
         self.energy = self.energy - h * damage  # damage per shot
 
         if self.energy < 0:
@@ -62,7 +51,6 @@ class Agent():
 
             self.is_alive = False
             print(f"{systemtime}, Explosion, {self.id}", file=output_file)
-            print('agent', self.id, 'dies @', systemtime)
 
     def find_target(self, agents: typing.List['Agent'], min_distance: float=np.inf, max_targets=8):
         """
@@ -71,6 +59,7 @@ class Agent():
         Args:
             agents: All agents in the simulation that can be a target
             min_distance (optional): Distance of target to be found
+            max_targets (optional): That many agents can follow one target simultaneously.
         """
         if self.target:
             distance = Agent.square_distance(self.position - self.target.position)
@@ -97,8 +86,8 @@ class Agent():
         Args:
             systemtime: The current time step of the simulation.
             output_file: An open file descriptor which accepts the output of the simulation.
-            distance (float, optional): _description_. Defaults to 0.
-            probability (float, optional): _description_. Defaults to 0.08.
+            distance (optional): Distance, range of the laser.
+            probability (optional): Probaility of firing the laser per timestep.
         """
         if self.target:
             distance = Agent.square_distance(self.position - self.target.position)
@@ -114,7 +103,7 @@ class Agent():
 
         Args:
             agents: All agents in the simulation that can affect this agent.
-            min_distance (float, optional): _description_. Defaults to np.inf.
+            min_distance (optional): Agents inside radius of min_distance are considered as neighbor.
         """
         self.neighbors = []
         for a in agents:
@@ -133,12 +122,7 @@ class Agent():
         force = np.array([0, 0, 0], dtype=np.float64)
         for a in self.neighbors:
             distance = np.linalg.norm(self.position - a.position)
-
-            if distance < 2:
-                factor = 2 / np.exp(0.5 * 2)
-            else:
-                factor = distance / np.exp(0.5 * distance)
-
+            factor = 2 / np.exp(0.5 * 2) if distance < 2 else distance / np.exp(0.5 * distance)
             force = force + factor * (self.position - a.position)
 
         return force
@@ -152,7 +136,6 @@ class Agent():
         """
         direction = (self.position)
         distance = np.linalg.norm(direction)
-
         factor = distance ** 2 / 1000000
         return factor * (-direction / distance)
 
@@ -166,7 +149,6 @@ class Agent():
         station = np.array([0, 500, 40], dtype=np.float64)
         direction = (self.position - station)
         distance = np.linalg.norm(direction)
-
         factor = min(0.2, np.exp(-(distance-180)/12))  # soft transition
         direction = direction / distance
         return factor * direction
@@ -193,7 +175,6 @@ class Agent():
             output_file: An open file descriptor which accepts the output of the simulation.
             agents: All agents currently in the simulation.
         """
-
         if not self.is_alive:
             return
 
@@ -216,8 +197,7 @@ class Agent():
 
         force = 0.2 * f_social + 0.4 * f_center + 0.1 * f_nofly + 0.4 *f_target
 
-        # update direction based on the forces 
-        # Leapfrog integration (https://en.wikipedia.org/wiki/Leapfrog_integration)
+        # update direction based on the forces. Leapfrog integration (https://en.wikipedia.org/wiki/Leapfrog_integration)
         self.velocity = self.velocity + h * 0.5 * (self.force + force)
         self.force = force
 
@@ -233,7 +213,7 @@ class Agent():
         Args:
             systemtime: The current time step of the simulation.
             output_file: An open file descriptor which accepts the output of the simulation.
-       """
+        """
         if self.is_alive:
             # update position based on velocity and a half step of the force (Leapfrog)
             delta_position = h * self.velocity + (0.5 * self.force) * h ** 2
@@ -282,11 +262,6 @@ def main():
         if systemtime % 100 == 0:
             agents = [a for a in agents if a.is_alive is True]
             missiles = [m for m in missiles if m.is_alive is True]
-
-        if systemtime % 100 == 0:
-            print('+++', systemtime, len(agents))
-
-    print('Survivers:', len(agents), [a.id for a in agents])
 
 if __name__ == "__main__":
     main()

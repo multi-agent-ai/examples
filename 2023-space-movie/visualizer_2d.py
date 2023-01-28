@@ -1,3 +1,7 @@
+"""
+(c) 2023 Multi-Agent AI
+"""
+
 import pygame
 from pygame.locals import (K_ESCAPE, KEYDOWN)
 import click
